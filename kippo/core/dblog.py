@@ -3,53 +3,51 @@
 
 import re
 import time
+import abc
+
+# KIPP-0001 : create session
+# KIPP-0002 : succesful login
+# KIPP-0003 : failed login
+# KIPP-0004 : TTY log opened
+# KIPP-0005 : handle command
+# KIPP-0006 : handle unknown command
+# KIPP-0007 : file download
+# KIPP-0008 : INPUT
+# KIPP-0009 : SSH Version
+# KIPP-0010 : Terminal Size
+# KIPP-0011 : Connection Lost
 
 class DBLogger(object):
     def __init__(self, cfg):
         self.cfg = cfg
         self.sessions = {}
         self.ttylogs = {}
-        self.re_connected = re.compile(
-            '^New connection: ([0-9.]+):([0-9]+) \(([0-9.]+):([0-9]+)\) ' + \
-            '\[session: ([0-9]+)\]$')
         self.re_sessionlog = re.compile(
             '.*HoneyPotTransport,([0-9]+),[0-9.]+$')
 
-        # :dispatch: means the message has been delivered directly via
-        # logDispatch, instead of relying on the twisted logging, which breaks
-        # on scope changes.
-        self.re_map = [(re.compile(x[0]), x[1]) for x in (
-            ('^connection lost$',
-                self._connectionLost),
-            ('^login attempt \[(?P<username>.*)/(?P<password>.*)\] failed',
-                self.handleLoginFailed),
-            ('^login attempt \[(?P<username>.*)/(?P<password>.*)\] succeeded',
-                self.handleLoginSucceeded),
-            ('^Opening TTY log: (?P<logfile>.*)$',
-                self.handleTTYLogOpened),
-            ('^:dispatch: Command found: (?P<input>.*)$',
-                self.handleCommand),
-            ('^:dispatch: Command not found: (?P<input>.*)$',
-                self.handleUnknownCommand),
-            ('^:dispatch: Saving URL \((?P<url>.*)\) to (?P<outfile>.*)$',
-                self.handleFileDownload),
-            ('^INPUT \((?P<realm>[a-zA-Z0-9]+)\): (?P<input>.*)$',
-                self.handleInput),
-            ('^Terminal size: (?P<height>[0-9]+) (?P<width>[0-9]+)$',
-                self.handleTerminalSize),
-            ('^Remote SSH version: (?P<version>.*)$',
-                self.handleClientVersion),
-            )]
+        self.events = { 
+          'KIPP-0002': self.handleLoginSucceeded,
+          'KIPP-0003': self.handleLoginFailed,
+          'KIPP-0004': self.handleTTYLogOpened,
+          'KIPP-0005': self.handleCommand,
+          'KIPP-0006': self.handleUnknownCommand,
+          'KIPP-0007': self.handleFileDownload,
+          'KIPP-0008': self.handleInput,
+          'KIPP-0009': self.handleClientVersion,
+          'KIPP-0010': self.handleTerminalSize,
+          'KIPP-0010': self._connectionLost,
+        }
+
         self.start(cfg)
 
+    # use logDispatch when the HoneypotTransport prefix is not available.
+    # here you can explicitly set the sessionIds to tie the sessions together
     def logDispatch(self, sessionid, msg):
-        if sessionid not in self.sessions.keys():
-            return
-        for regex, func in self.re_map:
-            match = regex.match(msg)
-            if match:
-                func(self.sessions[sessionid], match.groupdict())
-                break
+        if isinstance( msg, dict ):
+            msg['sessionid'] = sessionid
+            return self.emit( msg )
+        elif isinstance( msg, str ):
+            return self.emit( { 'message':msg, 'sessionid':sessionid } )
 
     def start():
         pass
@@ -64,28 +62,38 @@ class DBLogger(object):
         return int(time.mktime(time.gmtime()[:-1] + (-1,)))
 
     def emit(self, ev):
-        if not len(ev['message']):
+        # ignore stdout and stderr in custom log observers
+        if 'printed' in ev:
             return
-        match = self.re_connected.match(ev['message'][0])
-        if match:
-            sessionid = int(match.groups()[4])
-            self.sessions[sessionid] = \
-                self.createSession(
-                    match.groups()[0], int(match.groups()[1]),
-                    match.groups()[2], int(match.groups()[3]))
-            return
-        match = self.re_sessionlog.match(ev['system'])
-        if not match:
-            return
-        sessionid = int(match.groups()[0])
+
+        # DEBUG: REMOVE ME
+        # print "emitting: %s" % repr( ev )
+
+        # newstyle structured logging
+        if 'eventid' in ev:
+            if ev['eventid'] == 'KIPP-0001':
+                sessionid = ev['sessionno']
+                self.sessions[sessionid] = \
+                    self.createSession(
+                        ev['src_ip'], ev['src_port'], ev['dst_ip'], ev['dst_port'] )
+                return
+
+        # extract session id from the twisted log messages
+        if 'system' in ev:
+            match = self.re_sessionlog.match(ev['system'])
+            if not match:
+                return
+            sessionid = int(match.groups()[0])
+        elif 'sessionid' in ev:
+            sessionid = ev['sessionid']
+
         if sessionid not in self.sessions.keys():
             return
-        message = ev['message'][0]
-        for regex, func in self.re_map:
-            match = regex.match(message)
-            if match:
-                func(self.sessions[sessionid], match.groupdict())
-                break
+
+        if 'eventid' in ev:
+            id = ev['eventid']
+            self.events[ev['eventid']]( self.sessions[sessionid], ev )
+            return
 
     def _connectionLost(self, session, args):
         self.handleConnectionLost(session, args)
@@ -103,46 +111,57 @@ class DBLogger(object):
         return ttylog
 
     # We have to return an unique ID
+    @abc.abstractmethod
     def createSession(self, peerIP, peerPort, hostIP, hostPort):
         return 0
 
     # args has: logfile
+    @abc.abstractmethod
     def handleTTYLogOpened(self, session, args):
         self.ttylogs[session] = args['logfile']
 
     # args is empty
+    @abc.abstractmethod
     def handleConnectionLost(self, session, args):
         pass
 
     # args has: username, password
+    @abc.abstractmethod
     def handleLoginFailed(self, session, args):
         pass
 
     # args has: username, password
+    @abc.abstractmethod
     def handleLoginSucceeded(self, session, args):
         pass
 
     # args has: input
+    @abc.abstractmethod
     def handleCommand(self, session, args):
         pass
 
     # args has: input
+    @abc.abstractmethod
     def handleUnknownCommand(self, session, args):
         pass
 
     # args has: realm, input
+    @abc.abstractmethod
     def handleInput(self, session, args):
         pass
 
     # args has: width, height
+    @abc.abstractmethod
     def handleTerminalSize(self, session, args):
         pass
 
     # args has: version
+    @abc.abstractmethod
     def handleClientVersion(self, session, args):
         pass
 
     # args has: url, outfile
+    @abc.abstractmethod
     def handleFileDownload(self, session, args):
         pass
 
