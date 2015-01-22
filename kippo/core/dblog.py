@@ -35,7 +35,7 @@ class DBLogger(object):
           'KIPP-0008': self.handleInput,
           'KIPP-0009': self.handleClientVersion,
           'KIPP-0010': self.handleTerminalSize,
-          'KIPP-0010': self._connectionLost,
+          'KIPP-0011': self._connectionLost,
         }
 
         self.start(cfg)
@@ -67,19 +67,22 @@ class DBLogger(object):
         if 'printed' in ev:
             return
 
+        # ignore anything without eventid
+        if not 'eventid' in ev:
+            return
+
         # DEBUG: REMOVE ME
         print "emitting: %s" % repr( ev )
 
-        # newstyle structured logging
-        if 'eventid' in ev:
-            if ev['eventid'] == 'KIPP-0001':
-                sessionid = ev['sessionno']
-                self.sessions[sessionid] = \
-                    self.createSession(
-                        ev['src_ip'], ev['src_port'], ev['dst_ip'], ev['dst_port'] )
-                return
+        # connection event is special. adds to list
+        if ev['eventid'] == 'KIPP-0001':
+            sessionid = ev['sessionno']
+            self.sessions[sessionid] = \
+                self.createSession(
+                    ev['src_ip'], ev['src_port'], ev['dst_ip'], ev['dst_port'] )
+            return
 
-        # extract session id from the twisted log messages
+        # extract session id from the twisted log prefix
         if 'system' in ev:
             match = self.re_sessionlog.match(ev['system'])
             if not match:
@@ -94,6 +97,8 @@ class DBLogger(object):
         if 'eventid' in ev:
             self.events[ev['eventid']]( self.sessions[sessionid], ev )
             return
+
+        print "error, can't dblog %s" % repr(ev)
 
     def _connectionLost(self, session, args):
         self.handleConnectionLost(session, args)
@@ -110,7 +115,7 @@ class DBLogger(object):
             f.close()
         return ttylog
 
-    # We have to return an unique ID
+    # We have to return a unique ID
     @abc.abstractmethod
     def createSession(self, peerIP, peerPort, hostIP, hostPort):
         return 0

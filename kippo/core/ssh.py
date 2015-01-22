@@ -482,24 +482,24 @@ class KippoSFTPServer:
         log.msg( "SFTP openFile: %s" % filename )
         return KippoSFTPFile(self, self._absPath(filename), flags, attrs)
 
-    def removeFile(self, filename):
-        log.msg( "SFTP removeFile: %s" % filename )
-        return self.fs.remove(self._absPath(filename))
+    def removeFile(self, thefilename):
+        log.msg( format="SFTP removeFile: %(filename)s", filename=thefilename )
+        return self.fs.remove(self._absPath(thefilename))
 
     def renameFile(self, oldpath, newpath):
-        log.msg( "SFTP renameFile: %s %s" % (oldpath, newpath) )
+        log.msg( format="SFTP renameFile: %(old)s %(new)s", old=oldpath, new=newpath )
         return self.fs.rename(self._absPath(oldpath), self._absPath(newpath))
 
-    def makeDirectory(self, path, attrs):
-        log.msg( "SFTP makeDirectory: %s" % path )
-        path = self._absPath(path)
-        self.fs.mkdir2(path)
-        self._setAttrs(path, attrs)
+    def makeDirectory(self, thepath, attrs):
+        log.msg( format="SFTP makeDirectory: %(path)s", path=thepath )
+        path = self._absPath(thepath)
+        self.fs.mkdir2(thepath)
+        self._setAttrs(thepath, attrs)
         return
 
-    def removeDirectory(self, path):
-        log.msg( "SFTP removeDirectory: %s" % path )
-        return self.fs.rmdir(self._absPath(path))
+    def removeDirectory(self, thepath):
+        log.msg( format="SFTP removeDirectory: %(path)s", path=thepath )
+        return self.fs.rmdir(self._absPath(thepath))
 
     def openDirectory(self, path):
         log.msg( "SFTP OpenDirectory: %s" % path )
@@ -541,7 +541,10 @@ components.registerAdapter( KippoSFTPServer, HoneyPotAvatar, conchinterfaces.ISF
 
 def KippoOpenConnectForwardingClient(remoteWindow, remoteMaxPacket, data, avatar):
     remoteHP, origHP = twisted.conch.ssh.forwarding.unpackOpen_direct_tcpip(data)
-    log.msg( "direct-tcp connection attempt to %s:%i" % remoteHP )
+
+    log.msg( format="direct-tcp connection request to %(host)s:%(port)s",
+        host=remoteHP[0], port=remoteHP[1]
+
     return KippoConnectForwardingChannel(remoteHP,
        remoteWindow=remoteWindow,
        remoteMaxPacket=remoteMaxPacket,
