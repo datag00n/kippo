@@ -25,7 +25,7 @@ class DBLogger(object):
         self.re_sessionlog = re.compile(
             '.*HoneyPotTransport,([0-9]+),[0-9.]+$')
 
-        self.events = { 
+        self.events = {
           'KIPP-0002': self.handleLoginSucceeded,
           'KIPP-0003': self.handleLoginFailed,
           'KIPP-0004': self.handleTTYLogOpened,
@@ -63,12 +63,12 @@ class DBLogger(object):
         return int(time.mktime(time.gmtime()[:-1] + (-1,)))
 
     def emit(self, ev):
-        # ignore stdout and stderr in custom log observers
+        # ignore stdout and stderr
         if 'printed' in ev:
             return
 
         # DEBUG: REMOVE ME
-        # print "emitting: %s" % repr( ev )
+        print "emitting: %s" % repr( ev )
 
         # newstyle structured logging
         if 'eventid' in ev:
@@ -92,7 +92,6 @@ class DBLogger(object):
             return
 
         if 'eventid' in ev:
-            id = ev['eventid']
             self.events[ev['eventid']]( self.sessions[sessionid], ev )
             return
 

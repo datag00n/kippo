@@ -200,6 +200,7 @@ class HTTPProgressDownloader(client.HTTPDownloader):
             else:
                 msg = { 'eventid':'KIPP-0007', 'url':self.wget.url, 'outfile':self.fileName,
                     'format':'Saving URL (%(url)s) to %(outfile)s' }
+                # we're in a completely different class here. need to use logDispatch
                 self.wget.honeypot.logDispatch(msg)
                 log.msg( msg )
 
