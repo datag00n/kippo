@@ -178,7 +178,6 @@ class command_passwd(HoneyPotCommand):
         self.exit()
 
     def lineReceived(self, line):
-        #log.msg( 'INPUT (passwd):', line )
         log.msg( eventid='KIPP-0008', realm='passwd', input=line,
             format='INPUT (%(realm)s): %(input)s' )
 

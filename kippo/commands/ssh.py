@@ -79,7 +79,9 @@ class command_ssh(HoneyPotCommand):
         self.exit()
 
     def lineReceived(self, line):
-        log.msg( 'INPUT (ssh):', line )
+        log.msg( eventid='KIPP-0008', realm='ssh', input=line,
+             format='INPUT (%(realm)s): %(input)s' )
+
         if len(self.callbacks):
             self.callbacks.pop(0)(line)
 commands['/usr/bin/ssh'] = command_ssh

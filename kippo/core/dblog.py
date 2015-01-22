@@ -49,6 +49,7 @@ class DBLogger(object):
         elif isinstance( msg, str ):
             return self.emit( { 'message':msg, 'sessionid':sessionid } )
 
+    @abc.abstractmethod
     def start():
         pass
 
