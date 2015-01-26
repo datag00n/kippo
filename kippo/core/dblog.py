@@ -5,17 +5,17 @@ import re
 import time
 import abc
 
-# KIPP-0001 : create session
-# KIPP-0002 : succesful login
-# KIPP-0003 : failed login
-# KIPP-0004 : TTY log opened
-# KIPP-0005 : handle command
-# KIPP-0006 : handle unknown command
-# KIPP-0007 : file download
-# KIPP-0008 : INPUT
-# KIPP-0009 : SSH Version
-# KIPP-0010 : Terminal Size
-# KIPP-0011 : Connection Lost
+# KIPP0001 : create session
+# KIPP0002 : succesful login
+# KIPP0003 : failed login
+# KIPP0004 : TTY log opened
+# KIPP0005 : handle command
+# KIPP0006 : handle unknown command
+# KIPP0007 : file download
+# KIPP0008 : INPUT
+# KIPP0009 : SSH Version
+# KIPP0010 : Terminal Size
+# KIPP0011 : Connection Lost
 
 class DBLogger(object):
     def __init__(self, cfg):
@@ -25,17 +25,19 @@ class DBLogger(object):
         self.re_sessionlog = re.compile(
             '.*HoneyPotTransport,([0-9]+),[0-9.]+$')
 
+        # KIPP0001 is special since it kicks off new logging event, 
+        # and is not handled here
         self.events = {
-          'KIPP-0002': self.handleLoginSucceeded,
-          'KIPP-0003': self.handleLoginFailed,
-          'KIPP-0004': self.handleTTYLogOpened,
-          'KIPP-0005': self.handleCommand,
-          'KIPP-0006': self.handleUnknownCommand,
-          'KIPP-0007': self.handleFileDownload,
-          'KIPP-0008': self.handleInput,
-          'KIPP-0009': self.handleClientVersion,
-          'KIPP-0010': self.handleTerminalSize,
-          'KIPP-0011': self._connectionLost,
+          'KIPP0002': self.handleLoginSucceeded,
+          'KIPP0003': self.handleLoginFailed,
+          'KIPP0004': self.handleTTYLogOpened,
+          'KIPP0005': self.handleCommand,
+          'KIPP0006': self.handleUnknownCommand,
+          'KIPP0007': self.handleFileDownload,
+          'KIPP0008': self.handleInput,
+          'KIPP0009': self.handleClientVersion,
+          'KIPP0010': self.handleTerminalSize,
+          'KIPP0011': self._connectionLost,
         }
 
         self.start(cfg)
@@ -75,7 +77,7 @@ class DBLogger(object):
         print "emitting: %s" % repr( ev )
 
         # connection event is special. adds to list
-        if ev['eventid'] == 'KIPP-0001':
+        if ev['eventid'] == 'KIPP0001':
             sessionid = ev['sessionno']
             self.sessions[sessionid] = \
                 self.createSession(

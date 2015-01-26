@@ -178,7 +178,7 @@ class command_passwd(HoneyPotCommand):
         self.exit()
 
     def lineReceived(self, line):
-        log.msg( eventid='KIPP-0008', realm='passwd', input=line,
+        log.msg( eventid='KIPP0008', realm='passwd', input=line,
             format='INPUT (%(realm)s): %(input)s' )
 
         self.password = line.strip()
@@ -375,7 +375,7 @@ class command_perl(HoneyPotCommand):
             self.exit()
 
     def lineReceived(self, line):
-        log.msg( eventid='KIPP-0008', realm='perl', input=line,
+        log.msg( eventid='KIPP0008', realm='perl', input=line,
             format='INPUT (%(realm)s): %(input)s' )
 
 commands['/usr/bin/perl'] = command_perl
@@ -440,7 +440,7 @@ class command_php(HoneyPotCommand):
             self.exit()
 
     def lineReceived(self, line):
-        log.msg( eventid='KIPP-0008', realm='php', input=line,
+        log.msg( eventid='KIPP0008', realm='php', input=line,
             format='INPUT (%(realm)s): %(input)s' )
 
 commands['/usr/bin/php'] = command_php

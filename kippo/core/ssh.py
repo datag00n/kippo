@@ -174,7 +174,7 @@ class HoneyPotTransport(kippo.core.sshserver.KippoSSHServerTransport):
         self.logintime = time.time()
         self.transportId = uuid.uuid4().hex[:8]
 
-        log.msg( eventid='KIPP-0001',
+        log.msg( eventid='KIPP0001',
             format='New connection: %(src_ip)s:%(src_port)s (%(dst_ip)s:%(dst_port)s) [session: %(sessionno)s]',
             src_ip=self.transport.getPeer().host, src_port=self.transport.getPeer().port,
             dst_ip=self.transport.getHost().host, dst_port=self.transport.getHost().port,
@@ -206,7 +206,7 @@ class HoneyPotTransport(kippo.core.sshserver.KippoSSHServerTransport):
         log.msg('KEXINIT: client supported MAC: %s' % macCS )
         log.msg('KEXINIT: client supported compression: %s' % compCS )
         log.msg('KEXINIT: client supported lang: %s' % langCS )
-        log.msg( eventid='KIPP-0009',
+        log.msg( eventid='KIPP0009',
             version=self.otherVersionString,
             format='Remote SSH version: %(version)s' )
 
@@ -288,7 +288,7 @@ class HoneyPotAvatar(avatar.ConchUser):
         protocol.makeConnection(session.wrapProtocol(serverProtocol))
 
     def getPty(self, terminal, windowSize, attrs):
-        log.msg( eventid='KIPP-0010',
+        log.msg( eventid='KIPP0010',
             width=windowSize[0], height=windowSize[1],
             format='Terminal Size: %(width)s %(height)s' )
         self.windowSize = windowSize
