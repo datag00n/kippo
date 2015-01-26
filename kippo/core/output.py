@@ -6,6 +6,7 @@ import datetime
 import re
 import socket
 import time
+import uuid
 
 # KIPP0001 : create session
 # KIPP0002 : succesful login
@@ -57,8 +58,9 @@ class Output(object):
         """Hook that can be used to close connections in output plugins"""
         pass
 
+    # this is the main emit() hook that gets called by the the Twisted logging
     def emit(self, ev):
-        # ignore stdout and stderr
+        # ignore stdout and stderr in output plugins
         if 'printed' in ev:
             return
 
@@ -67,59 +69,41 @@ class Output(object):
             return
 
         # add ISO timestamp and sensor data
+        if not ev['time']:
+            ev['time'] = datetime.time.time()
         ev['timestamp'] = datetime.datetime.fromtimestamp(ev['time']).isoformat() + 'Z'
         ev['sensor'] = self.sensor
 
         # connection event is special. adds to list
         if ev['eventid'] == 'KIPP0001':
             sessionid = ev['sessionno']
-            self.sessions[sessionid] = \
-                self.createSession(
-                    ev['src_ip'], ev['src_port'], ev['dst_ip'], ev['dst_port'] )
+            self.sessions[sessionid] = uuid.uuid4().hex
+            self.handleLog( self.sessions[sessionid], ev )
             return
 
+        # disconnection is special, add the tty log
+        if ev['eventid'] == 'KIPP0011':
+            # FIXME: file is read for each output plugin
+            f = file(self.ttylogs[session])
+            ev['ttylog'] = f.read(10485760)
+            f.close()
+
         # extract session id from the twisted log prefix
-        if 'system' in ev:
+        # explicit sessionid (from logDispatch) overrides from 'system'
+        if 'sessionid' in ev:
+            sessionid = ev['sessionid']
+        elif 'system' in ev:
             match = self.re_sessionlog.match(ev['system'])
             if not match:
                 return
             sessionid = int(match.groups()[0])
-        elif 'sessionid' in ev:
-            sessionid = ev['sessionid']
-
-        if sessionid not in self.sessions.keys():
-            return
 
         self.handleLog( self.sessions[sessionid], ev )
         # print "error calling handleLog for event  %s" % repr(ev)
-
-    def _connectionLost(self, session, args):
-        self.handleConnectionLost(session, args)
-        if session in self.ttylogs:
-            del self.ttylogs[session]
-        for i in [x for x in self.sessions if self.sessions[x] == session]:
-            del self.sessions[i]
-
-    def ttylog(self, session):
-        ttylog = None
-        if session in self.ttylogs:
-            f = file(self.ttylogs[session])
-            ttylog = f.read(10485760)
-            f.close()
-        return ttylog
 
     @abc.abstractmethod
     def handleLog( self, session, event ):
         """Handle a general event within the dblogger"""
         pass
-
-    # We have to return a unique ID
-    @abc.abstractmethod
-    def createSession(self, peerIP, peerPort, hostIP, hostPort):
-        return 0
-
-    # args has: logfile
-    def handleTTYLogOpened(self, session, args):
-        self.ttylogs[session] = args['logfile']
 
 # vim: set sw=4 et:

@@ -27,13 +27,11 @@
 # SUCH DAMAGE.
 
 import abc
-import uuid
 import json
 
-from kippo.core import output
-from twisted.python import log
+import kippo.core.output
 
-class Output(output.Output):
+class Output(kippo.core.output.Output):
 
     def start(self, cfg):
         self.outfile = file(cfg.get('output_jsonlog', 'logfile'), 'a')
@@ -49,12 +47,6 @@ class Output(output.Output):
         json.dump( logentry,  self.outfile )
         self.outfile.write( '\n' )
         self.outfile.flush()
-
-    def createSession(self, peerIP, peerPort, hostIP, hostPort):
-        sid = uuid.uuid4().hex
-        logentry = { 'message' : 'New connection: %s:%s' % (peerIP, peerPort), 'src_ip' : peerIP }
-        self.write(sid, logentry )
-        return sid
 
     def handleLog( self, session, event ):
         self.write( session, event )
