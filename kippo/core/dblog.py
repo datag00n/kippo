@@ -3,7 +3,6 @@
 
 import re
 import time
-import abc
 
 # KIPP0001 : create session
 # KIPP0002 : succesful login
@@ -16,9 +15,9 @@ import abc
 # KIPP0009 : SSH Version
 # KIPP0010 : Terminal Size
 # KIPP0011 : Connection Lost
-# KIPP0012 : SSH direct-tcpip fwd request
 
 class DBLogger(object):
+
     def __init__(self, cfg):
         self.cfg = cfg
         self.sessions = {}
@@ -52,8 +51,8 @@ class DBLogger(object):
         elif isinstance( msg, str ):
             return self.emit( { 'message':msg, 'sessionid':sessionid } )
 
-    @abc.abstractmethod
     def start():
+        """Hook that can be used to set up connections in dbloggers"""
         pass
 
     def getSensor(self):
@@ -75,7 +74,7 @@ class DBLogger(object):
             return
 
         # DEBUG: REMOVE ME
-        print "emitting: %s" % repr( ev )
+        # print "emitting: %s" % repr( ev )
 
         # connection event is special. adds to list
         if ev['eventid'] == 'KIPP0001':
@@ -98,8 +97,9 @@ class DBLogger(object):
             return
 
         if 'eventid' in ev:
-            self.events[ev['eventid']]( self.sessions[sessionid], ev )
-            return
+            if ev['eventid'] in self.events:
+                self.events[ev['eventid']]( self.sessions[sessionid], ev )
+                return
 
         print "error, can't dblog %s" % repr(ev)
 
@@ -119,57 +119,46 @@ class DBLogger(object):
         return ttylog
 
     # We have to return a unique ID
-    @abc.abstractmethod
     def createSession(self, peerIP, peerPort, hostIP, hostPort):
         return 0
 
     # args has: logfile
-    @abc.abstractmethod
     def handleTTYLogOpened(self, session, args):
         self.ttylogs[session] = args['logfile']
 
     # args is empty
-    @abc.abstractmethod
     def handleConnectionLost(self, session, args):
         pass
 
     # args has: username, password
-    @abc.abstractmethod
     def handleLoginFailed(self, session, args):
         pass
 
     # args has: username, password
-    @abc.abstractmethod
     def handleLoginSucceeded(self, session, args):
         pass
 
     # args has: input
-    @abc.abstractmethod
     def handleCommand(self, session, args):
         pass
 
     # args has: input
-    @abc.abstractmethod
     def handleUnknownCommand(self, session, args):
         pass
 
     # args has: realm, input
-    @abc.abstractmethod
     def handleInput(self, session, args):
         pass
 
     # args has: width, height
-    @abc.abstractmethod
     def handleTerminalSize(self, session, args):
         pass
 
     # args has: version
-    @abc.abstractmethod
     def handleClientVersion(self, session, args):
         pass
 
     # args has: url, outfile
-    @abc.abstractmethod
     def handleFileDownload(self, session, args):
         pass
 

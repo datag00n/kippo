@@ -68,6 +68,8 @@ class HoneyPotSSHFactory(factory.SSHFactory):
     def logDispatch(self, sessionid, msg):
         for dblog in self.dbloggers:
             dblog.logDispatch(sessionid, msg)
+        for output in self.output_plugins:
+            output.logDispatch(sessionid, msg)
 
     def __init__(self):
         cfg = config()
@@ -78,8 +80,9 @@ class HoneyPotSSHFactory(factory.SSHFactory):
         # for use by the uptime command
         self.starttime = time.time()
 
-        # load db loggers
         self.dbloggers = []
+
+        # load db loggers
         for x in cfg.sections():
             if not x.startswith('database_'):
                 continue
@@ -98,6 +101,27 @@ class HoneyPotSSHFactory(factory.SSHFactory):
                 globals(), locals(), ['dblog']).DBLogger(lcfg)
             log.startLoggingWithObserver(dblogger.emit, setStdout=False)
             self.dbloggers.append(dblogger)
+
+        # load new output modules
+        self.output_plugins = [];
+        for x in cfg.sections():
+            if not x.startswith('output_'):
+                continue
+            engine = x.split('_')[1]
+            output = 'output_' + engine
+            lcfg = ConfigParser.ConfigParser()
+            lcfg.add_section(output)
+            for i in cfg.options(x):
+                lcfg.set(output, i, cfg.get(x, i))
+            lcfg.add_section('honeypot')
+            for i in cfg.options('honeypot'):
+                lcfg.set('honeypot', i, cfg.get('honeypot', i))
+            log.msg( 'Loading output engine: %s' % (engine,) )
+            output = __import__(
+                'kippo.output.%s' % (engine,),
+                globals(), locals(), ['output']).Output(lcfg)
+            log.startLoggingWithObserver(output.emit, setStdout=False)
+            self.output_plugins.append(output)
 
     def buildProtocol(self, addr):
         """
@@ -206,6 +230,17 @@ class HoneyPotTransport(kippo.core.sshserver.KippoSSHServerTransport):
         log.msg('KEXINIT: client supported MAC: %s' % macCS )
         log.msg('KEXINIT: client supported compression: %s' % compCS )
         log.msg('KEXINIT: client supported lang: %s' % langCS )
+
+        log.msg( eventid='KIPP0012', 
+            kexalgs=kexAlgs,
+            keyAlgs=keyAlgs,
+            encCS=encCS,
+            macCS=macCS,
+            compCS=compCS,
+            langCS=langCS,
+            format='KEXINIT requested'
+            )
+
         log.msg( eventid='KIPP0009',
             version=self.otherVersionString,
             format='Remote SSH version: %(version)s' )

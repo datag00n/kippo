@@ -1,9 +1,11 @@
 # Copyright (c) 2009-2014 Upi Tamminen <desaster@gmail.com>
 # See the COPYRIGHT file for more information
 
-import re
-import time
 import abc
+import datetime
+import re
+import socket
+import time
 
 # KIPP0001 : create session
 # KIPP0002 : succesful login
@@ -19,7 +21,7 @@ import abc
 # -- new event id's after this --
 # KIPP0012 : SSH direct-tcpip fwd request
 
-class DBLogger(object):
+class Output(object):
 
     __metaclass__ = abc.ABCMeta
 
@@ -29,21 +31,10 @@ class DBLogger(object):
         self.ttylogs = {}
         self.re_sessionlog = re.compile(
             '.*HoneyPotTransport,([0-9]+),[0-9.]+$')
-
-        # KIPP0001 is special since it kicks off new logging event, 
-        # and is not handled here
-        self.events = {
-          'KIPP0002': self.handleLoginSucceeded,
-          'KIPP0003': self.handleLoginFailed,
-          'KIPP0004': self.handleTTYLogOpened,
-          'KIPP0005': self.handleCommand,
-          'KIPP0006': self.handleUnknownCommand,
-          'KIPP0007': self.handleFileDownload,
-          'KIPP0008': self.handleInput,
-          'KIPP0009': self.handleClientVersion,
-          'KIPP0010': self.handleTerminalSize,
-          'KIPP0011': self._connectionLost,
-        }
+        if self.cfg.has_option('honeypot', 'sensor_name'):
+            self.sensor = self.cfg.get('honeypot', 'sensor_name')
+        else:
+            self.sensor = socket.gethostname()
 
         self.start(cfg)
 
@@ -58,21 +49,13 @@ class DBLogger(object):
 
     @abc.abstractmethod
     def start():
-        """Hook that can be used to set up connections in dbloggers"""
+        """Hook that can be used to set up connections in output plugins"""
         pass
 
+    @abc.abstractmethod
     def stop():
-        """Hook that can be used to close connections in dbloggers"""
+        """Hook that can be used to close connections in output plugins"""
         pass
-
-    def getSensor(self):
-        if self.cfg.has_option('honeypot', 'sensor_name'):
-            return self.cfg.get('honeypot', 'sensor_name')
-        return None
-
-    def nowUnix(self):
-        """return the current UTC time as an UNIX timestamp"""
-        return int(time.mktime(time.gmtime()[:-1] + (-1,)))
 
     def emit(self, ev):
         # ignore stdout and stderr
@@ -83,8 +66,9 @@ class DBLogger(object):
         if not 'eventid' in ev:
             return
 
-        # DEBUG: REMOVE ME
-        # print "emitting: %s" % repr( ev )
+        # add ISO timestamp and sensor data
+        ev['timestamp'] = datetime.datetime.fromtimestamp(ev['time']).isoformat() + 'Z'
+        ev['sensor'] = self.sensor
 
         # connection event is special. adds to list
         if ev['eventid'] == 'KIPP0001':
@@ -106,17 +90,8 @@ class DBLogger(object):
         if sessionid not in self.sessions.keys():
             return
 
-        if 'eventid' in ev:
-            if ev['eventid'] in self.events:
-                self.events[ev['eventid']]( self.sessions[sessionid], ev )
-            else:
-                try:
-                    handleLog( self.sessions[sessionid], ev )
-                except:
-                    pass
-            return
-
-        print "error, can't dblog %s" % repr(ev)
+        self.handleLog( self.sessions[sessionid], ev )
+        # print "error calling handleLog for event  %s" % repr(ev)
 
     def _connectionLost(self, session, args):
         self.handleConnectionLost(session, args)
@@ -133,53 +108,18 @@ class DBLogger(object):
             f.close()
         return ttylog
 
-    #@abc.abstractmethod
+    @abc.abstractmethod
     def handleLog( self, session, event ):
         """Handle a general event within the dblogger"""
         pass
 
     # We have to return a unique ID
+    @abc.abstractmethod
     def createSession(self, peerIP, peerPort, hostIP, hostPort):
         return 0
 
     # args has: logfile
     def handleTTYLogOpened(self, session, args):
         self.ttylogs[session] = args['logfile']
-
-    # args is empty
-    def handleConnectionLost(self, session, args):
-        handleLog( session, args )
-
-    # args has: username, password
-    def handleLoginFailed(self, session, args):
-        handleLog( session, args )
-
-    # args has: username, password
-    def handleLoginSucceeded(self, session, args):
-        handleLog( session, args )
-
-    # args has: input
-    def handleCommand(self, session, args):
-        handleLog( session, args )
-
-    # args has: input
-    def handleUnknownCommand(self, session, args):
-        handleLog( session, args )
-
-    # args has: realm, input
-    def handleInput(self, session, args):
-        handleLog( session, args )
-
-    # args has: width, height
-    def handleTerminalSize(self, session, args):
-        handleLog( session, args )
-
-    # args has: version
-    def handleClientVersion(self, session, args):
-        handleLog( session, args )
-
-    # args has: url, outfile
-    def handleFileDownload(self, session, args):
-        handleLog( session, args )
 
 # vim: set sw=4 et:
