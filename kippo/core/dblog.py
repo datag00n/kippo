@@ -16,6 +16,7 @@ import abc
 # KIPP0009 : SSH Version
 # KIPP0010 : Terminal Size
 # KIPP0011 : Connection Lost
+# KIPP0012 : SSH direct-tcpip fwd request
 
 class DBLogger(object):
     def __init__(self, cfg):

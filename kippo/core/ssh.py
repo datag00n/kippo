@@ -542,8 +542,8 @@ components.registerAdapter( KippoSFTPServer, HoneyPotAvatar, conchinterfaces.ISF
 def KippoOpenConnectForwardingClient(remoteWindow, remoteMaxPacket, data, avatar):
     remoteHP, origHP = twisted.conch.ssh.forwarding.unpackOpen_direct_tcpip(data)
 
-    log.msg( format="direct-tcp connection request to %(host)s:%(port)s",
-        host=remoteHP[0], port=remoteHP[1]
+    log.msg( eventid='KIPP0012', format="direct-tcp connection request to %(host)s:%(port)s",
+        host=remoteHP[0], port=remoteHP[1] )
 
     return KippoConnectForwardingChannel(remoteHP,
        remoteWindow=remoteWindow,
