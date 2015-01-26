@@ -84,9 +84,10 @@ class Output(object):
         # disconnection is special, add the tty log
         if ev['eventid'] == 'KIPP0011':
             # FIXME: file is read for each output plugin
-            f = file(self.ttylogs[session])
-            ev['ttylog'] = f.read(10485760)
-            f.close()
+            #f = file(self.ttylogs[session])
+            #ev['ttylog'] = f.read(10485760)
+            #f.close()
+            pass
 
         # extract session id from the twisted log prefix
         # explicit sessionid (from logDispatch) overrides from 'system'

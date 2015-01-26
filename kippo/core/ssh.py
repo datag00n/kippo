@@ -21,7 +21,7 @@ from twisted.conch.ssh.common import NS, getNS
 
 import ConfigParser
 
-from kippo.core import ttylog, utils, fs, sshserver
+from kippo.core import utils, fs, sshserver
 from kippo.core.config import config
 import kippo.core.auth
 import kippo.core.honeypot
@@ -177,22 +177,13 @@ class HoneyPotRealm:
             raise Exception, "No supported interfaces found."
 
 class HoneyPotTransport(kippo.core.sshserver.KippoSSHServerTransport):
-    """
-    @ivar logintime: time of login
 
-    @ivar interactors: interactors
-
-    @ivar ttylog_open: whether log is open
-
-    @ivar transportId: UUID of this transport
-
-    @ivar _hadVersion: used so we only send key exchange after receive version info
-    """
-
-    _hadVersion = False
-    ttylog_open = False
-    interactors = []
-    transportId = ''
+    def __init__(self):
+        self._hadVersion = False
+        self.ttylog_open = False
+        self.interactors = []
+        self.transportId = ''
+        kippo.core.sshserver.KippoSSHServerTransport.__init(self)
 
     def connectionMade(self):
         self.logintime = time.time()
@@ -264,9 +255,6 @@ class HoneyPotTransport(kippo.core.sshserver.KippoSSHServerTransport):
         if self.transport.sessionno in self.factory.sessions:
             del self.factory.sessions[self.transport.sessionno]
         self.lastlogExit()
-        if self.ttylog_open:
-            ttylog.ttylog_close(self.ttylog_file, time.time())
-            self.ttylog_open = False
         kippo.core.sshserver.KippoSSHServerTransport.connectionLost(self, reason)
 
 class HoneyPotSSHSession(session.SSHSession):

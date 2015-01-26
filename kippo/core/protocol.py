@@ -241,7 +241,6 @@ class LoggingServerProtocol(insults.ServerProtocol):
         log.msg( eventid='KIPP0004',
             logfile=transport.ttylog_file,
             format='Opening TTY Log: %(logfile)s')
-        log.msg( 'Opening TTY log: %s' % transport.ttylog_file )
 
         ttylog.ttylog_open(transport.ttylog_file, time.time())
         transport.ttylog_open = True
@@ -276,6 +275,17 @@ class LoggingServerProtocol(insults.ServerProtocol):
     # this doesn't seem to be called upon disconnect, so please use
     # HoneyPotTransport.connectionLost instead
     def connectionLost(self, reason):
+
+        transport = self.transport.session.conn.transport
+
+        if transport.ttylog_open:
+            ttylog.ttylog_close(self.ttylog_file, time.time())
+            transport.ttylog_open = False
+
+        log.msg( eventid='KIPP0012',
+            logfile=transport.ttylog_file,
+            format='Closing TTY Log: %(logfile)s')
+
         insults.ServerProtocol.connectionLost(self, reason)
 
 # vim: set sw=4 et:
